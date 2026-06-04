@@ -1,0 +1,17 @@
+{
+  "name": "mailguardian-backend",
+  "version": "1.0.0",
+  "description": "Backend IMAP pour Mail Guardian",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "imap": "^0.8.19",
+    "mailparser": "^3.6.5"
+  }
+}
