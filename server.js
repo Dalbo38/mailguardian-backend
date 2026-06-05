@@ -5,22 +5,28 @@ const Imap = require("imap");
 const { simpleParser } = require("mailparser");
 
 const app = express();
-app.use(cors());
+
+app.use(cors({
+  origin: [
+    "https://mailguardian-frontend.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000"
+  ],
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type"]
+}));
+
 app.use(express.json());
 
-// ─── Route de test ────────────────────────────────────────────────────────────
 app.get("/", (req, res) => {
   res.json({ status: "Mail Guardian Backend opérationnel 🛡️" });
 });
 
-// ─── Route : récupérer les emails via IMAP ────────────────────────────────────
 app.post("/api/emails", async (req, res) => {
   const { email, password, limit = 20 } = req.body;
-
   if (!email || !password) {
     return res.status(400).json({ error: "Email et mot de passe requis" });
   }
-
   try {
     const emails = await fetchEmails(email, password, limit);
     res.json({ success: true, emails });
@@ -33,7 +39,6 @@ app.post("/api/emails", async (req, res) => {
   }
 });
 
-// ─── Fonction IMAP ────────────────────────────────────────────────────────────
 function fetchEmails(user, password, limit) {
   return new Promise((resolve, reject) => {
     const imap = new Imap({
@@ -51,17 +56,13 @@ function fetchEmails(user, password, limit) {
     imap.once("ready", () => {
       imap.openBox("INBOX", true, (err, box) => {
         if (err) { imap.end(); return reject(err); }
-
         const total = box.messages.total;
         if (total === 0) { imap.end(); return resolve([]); }
-
-        // Récupérer les N derniers emails
         const start = Math.max(1, total - limit + 1);
         const fetch = imap.seq.fetch(`${start}:${total}`, {
           bodies: "",
           struct: true,
         });
-
         fetch.on("message", (msg, seqno) => {
           let buffer = "";
           msg.on("body", (stream) => {
@@ -83,19 +84,17 @@ function fetchEmails(user, password, limit) {
             });
           });
         });
-
         fetch.once("error", (err) => { imap.end(); reject(err); });
         fetch.once("end", () => { imap.end(); });
       });
     });
 
     imap.once("error", (err) => reject(err));
-    imap.once("end", () => resolve(emails.reverse())); // Plus récents en premier
+    imap.once("end", () => resolve(emails.reverse()));
     imap.connect();
   });
 }
 
-// ─── Démarrage ────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`✅ Mail Guardian Backend démarré sur le port ${PORT}`);
